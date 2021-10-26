@@ -11,16 +11,48 @@ use seed::{prelude::*, *};
 
 // `init` describes what should happen when your app started.
 fn init(_: Url, _: &mut impl Orders<Msg>) -> Model {
-    Model { counter: 0 }
+    Model {
+        source: Sentence::new("pt_BR", "O gato esta no cesto".to_string()),
+        target: "creole",
+        translations: vec![
+            Sentence::new("creole", "Translation 1".to_string()),
+            Sentence::new("creole", "Translation 2".to_string()),
+            Sentence::new("creole", "Translation 3".to_string()),
+            Sentence::new("ja", "Translation 4".to_string()),
+            Sentence::new("ja", "Translation 5".to_string()),
+        ],
+        placeholder: Some("Traducao do google".to_string()),
+        placeholder_element: ElRef::default(),
+    }
 }
 
 // ------ ------
 //     Model
 // ------ ------
 
+struct Sentence {
+    lang: &'static str,
+    text: String,
+    votes: i32,
+}
+
+impl Sentence {
+    fn new(lang: &'static str, text: String) -> Self {
+        Self {
+            lang,
+            text,
+            votes: 0,
+        }
+    }
+}
+
 // `Model` describes our app state.
 struct Model {
-    counter: i32,
+    source: Sentence,
+    target: &'static str,
+    translations: Vec<Sentence>,
+    placeholder: Option<String>,
+    placeholder_element: ElRef<web_sys::HtmlInputElement>,
 }
 
 // ------ ------
@@ -31,13 +63,39 @@ struct Model {
 #[derive(Copy, Clone)]
 // `Msg` describes the different events you can modify state with.
 enum Msg {
-    Increment,
+    Target(&'static str),
+    Again,
+    Great,
+    Vote(usize, i32),
+    Promote,
 }
 
 // `update` describes how to handle each `Msg`.
 fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
     match msg {
-        Msg::Increment => model.counter += 1,
+        Msg::Target(lang) => {
+            model.target = lang;
+        }
+        Msg::Again => {
+            log!("Again :/");
+        }
+        Msg::Great => {
+            log!("Great :)");
+        }
+        Msg::Vote(i, v) => {
+            log!("Vote: ", i, v);
+            model.translations[i].votes += v;
+        }
+        Msg::Promote => {
+            model.placeholder.take().unwrap();
+            
+            let text = model.placeholder_element.get().unwrap().value();
+
+            let mut sentence = Sentence::new(model.target, text);
+            sentence.votes += 1;
+
+            model.translations.push(sentence);
+        }
     }
 }
 
@@ -48,9 +106,41 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
 // `view` describes what to display.
 fn view(model: &Model) -> Node<Msg> {
     div![
-        "This is a counter: ",
-        C!["counter"],
-        button![model.counter, ev(Ev::Click, |_| Msg::Increment),],
+        div![
+            span!["set target:"],
+            button!["ja", ev(Ev::Click, |_| Msg::Target("ja"))],
+            button!["creole", ev(Ev::Click, |_| Msg::Target("creole"))],
+        ],
+        div![span!["Sentence"]],
+        div![span![model.source.lang], ":", span![&model.source.text]],
+        div![
+            span!["creole"],
+            model
+                .translations
+                .iter()
+                .enumerate()
+                .filter(|(_, t)| t.lang == model.target)
+                .map(|(i, t)| {
+                    div![
+                        span![&t.votes],
+                        "->",
+                        span![&t.text],
+                        button!["u", ev(Ev::Click, move |_| Msg::Vote(i, 1))],
+                        button!["d", ev(Ev::Click, move |_| Msg::Vote(i, -1))]
+                    ]
+                }),
+            model.placeholder.as_ref().map(|sentence| div![
+                input![
+                    el_ref(&model.placeholder_element),
+                    attrs! {At::Value => sentence}
+                ],
+                button!["u", ev(Ev::Click, |_| Msg::Promote)],
+            ],)
+        ],
+        div![
+            button!["Again :/", ev(Ev::Click, |_| Msg::Again)],
+            button!["Great :)", ev(Ev::Click, |_| Msg::Great)]
+        ],
     ]
 }
 
