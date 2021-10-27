@@ -63,7 +63,7 @@ struct Model {
 #[derive(Copy, Clone)]
 // `Msg` describes the different events you can modify state with.
 enum Msg {
-    Target(&'static str),
+    // Target(&'static str),
     Again,
     Great,
     Vote(usize, i32),
@@ -73,9 +73,9 @@ enum Msg {
 // `update` describes how to handle each `Msg`.
 fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
     match msg {
-        Msg::Target(lang) => {
-            model.target = lang;
-        }
+        // Msg::Target(lang) => {
+        //     model.target = lang;
+        // }
         Msg::Again => {
             log!("Again :/");
         }
@@ -88,7 +88,6 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
         }
         Msg::Promote => {
             model.placeholder.take().unwrap();
-            
             let text = model.placeholder_element.get().unwrap().value();
 
             let mut sentence = Sentence::new(model.target, text);
@@ -106,40 +105,95 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
 // `view` describes what to display.
 fn view(model: &Model) -> Node<Msg> {
     div![
-        div![
-            span!["set target:"],
-            button!["ja", ev(Ev::Click, |_| Msg::Target("ja"))],
-            button!["creole", ev(Ev::Click, |_| Msg::Target("creole"))],
+        C![
+            "min-h-screen",
+            "flex",
+            "flex-col",
+            "gap-2",
+            "place-content-center",
+            "bg-indigo-50"
         ],
-        div![span!["Sentence"]],
-        div![span![model.source.lang], ":", span![&model.source.text]],
         div![
-            span!["creole"],
-            model
-                .translations
-                .iter()
-                .enumerate()
-                .filter(|(_, t)| t.lang == model.target)
-                .map(|(i, t)| {
+            C!["w-9/12", "mx-auto", "bg-white", "shadow", "p-8", "rounded"],
+            div![
+                // div![
+                //     span!["set target:"],
+                //     button!["ja", ev(Ev::Click, |_| Msg::Target("ja"))],
+                //     button!["creole", ev(Ev::Click, |_| Msg::Target("creole"))],
+                // ],
+                div![
                     div![
-                        span![&t.votes],
-                        "->",
-                        span![&t.text],
-                        button!["u", ev(Ev::Click, move |_| Msg::Vote(i, 1))],
-                        button!["d", ev(Ev::Click, move |_| Msg::Vote(i, -1))]
-                    ]
-                }),
-            model.placeholder.as_ref().map(|sentence| div![
-                input![
-                    el_ref(&model.placeholder_element),
-                    attrs! {At::Value => sentence}
+                        C!["py-2"],
+                        span![C!["w-24"], model.source.lang, ":"],
+                        span![C!["px-4"], &model.source.text]
+                    ],
+                    div![
+                        C!["flex", "flex-row", "py-2"],
+                        div![
+                            C!["flex", "flex-col", "place-content-center"],
+                            div![model.target, ":"],
+                        ],
+                        div![
+                            C!["flex", "flex-col", "gap-2", "p-4", "flex-grow"],
+                            model
+                                .translations
+                                .iter()
+                                .enumerate()
+                                .filter(|(_, t)| t.lang == model.target)
+                                .map(|(i, t)| {
+                                    div![
+                                        C!["flex", "gap-2", "flex-grow"],
+                                        span![C!["bg-blue-10", "w-4"], &t.votes],
+                                        span![C!["flex-grow"], &t.text],
+                                        button![
+                                            C![
+                                                "bg-green-500",
+                                                "hover:bg-green-300",
+                                                "rounded",
+                                                "px-2"
+                                            ],
+                                            "u",
+                                            ev(Ev::Click, move |_| Msg::Vote(i, 1))
+                                        ],
+                                        button![
+                                            C!["bg-red-500", "hover:bg-red-300", "rounded", "px-2"],
+                                            "d",
+                                            ev(Ev::Click, move |_| Msg::Vote(i, -1))
+                                        ]
+                                    ]
+                                }),
+                            model.placeholder.as_ref().map(|sentence| div![
+                                C!["flex", "gap-2", "flex-grow"],
+                                span![C!["w-4"], 0],
+                                input![
+                                    C!["flex-grow", "border-2", "rounded", "hover:shadow-2xl"],
+                                    el_ref(&model.placeholder_element),
+                                    attrs! {At::Value => sentence}
+                                ],
+                                button![
+                                    C!["bg-green-500", "hover:bg-green-300", "rounded", "px-2"],
+                                    "u",
+                                    ev(Ev::Click, |_| Msg::Promote)
+                                ],
+                                div![C!["bg-gray-500", "rounded", "px-2"], "d",]
+                            ],)
+                        ]
+                    ],
+                    div![
+                        C!["flex", "flex-row", "gap-2", "place-content-center"],
+                        button![
+                            C!["bg-red-500", "hover:bg-red-300", "rounded", "px-2"],
+                            "Again :/",
+                            ev(Ev::Click, |_| Msg::Again)
+                        ],
+                        button![
+                            C!["bg-green-500", "hover:bg-green-300", "rounded", "px-2"],
+                            "Great :)",
+                            ev(Ev::Click, |_| Msg::Great)
+                        ]
+                    ],
                 ],
-                button!["u", ev(Ev::Click, |_| Msg::Promote)],
-            ],)
-        ],
-        div![
-            button!["Again :/", ev(Ev::Click, |_| Msg::Again)],
-            button!["Great :)", ev(Ev::Click, |_| Msg::Great)]
+            ],
         ],
     ]
 }
