@@ -9,21 +9,29 @@ use seed::{prelude::*, *};
 //     Init
 // ------ ------
 
+async fn fetch_sentence(id: usize) -> Msg {
+    Msg::SentenceMsg(Sentence::new("pt_BR", "O gato esta no cesto".to_string()))
+}
+
 // `init` describes what should happen when your app started.
-fn init(_: Url, _: &mut impl Orders<Msg>) -> Model {
-    Model {
-        source: Sentence::new("pt_BR", "O gato esta no cesto".to_string()),
-        target: "creole",
-        translations: vec![
-            Sentence::new("creole", "Translation 1".to_string()),
-            Sentence::new("creole", "Translation 2".to_string()),
-            Sentence::new("creole", "Translation 3".to_string()),
-            Sentence::new("ja", "Translation 4".to_string()),
-            Sentence::new("ja", "Translation 5".to_string()),
-        ],
-        placeholder: Some("Traducao do google".to_string()),
-        placeholder_element: ElRef::default(),
-    }
+fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
+
+    orders.perform_cmd(fetch_sentence(1));
+
+    Model::Loading
+    // Model {
+    //     source: Sentence::new(lang, "O gato esta no cesto".to_string()),
+    //     target,
+    //     translations: vec![
+    //         Sentence::new("creole", "Translation 1".to_string()),
+    //         Sentence::new("creole", "Translation 2".to_string()),
+    //         Sentence::new("creole", "Translation 3".to_string()),
+    //         Sentence::new("ja", "Translation 4".to_string()),
+    //         Sentence::new("ja", "Translation 5".to_string()),
+    //     ],
+    //     placeholder: Some("Traducao do google".to_string()),
+    //     placeholder_element: ElRef::default(),
+    // }
 }
 
 // ------ ------
@@ -46,8 +54,12 @@ impl Sentence {
     }
 }
 
+enum Model {
+    Loading,
+    Loaded(SentenceModel),
+}
 // `Model` describes our app state.
-struct Model {
+struct SentenceModel {
     source: Sentence,
     target: &'static str,
     translations: Vec<Sentence>,
@@ -60,7 +72,7 @@ struct Model {
 // ------ ------
 
 // (Remove the line below once any of your `Msg` variants doesn't implement `Copy`.)
-#[derive(Copy, Clone)]
+// #[derive(Clone)]
 // `Msg` describes the different events you can modify state with.
 enum Msg {
     // Target(&'static str),
@@ -68,32 +80,61 @@ enum Msg {
     Great,
     Vote(usize, i32),
     Promote,
+    SentenceMsg(Sentence),
 }
 
 // `update` describes how to handle each `Msg`.
-fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
-    match msg {
-        // Msg::Target(lang) => {
-        //     model.target = lang;
-        // }
-        Msg::Again => {
-            log!("Again :/");
-        }
-        Msg::Great => {
-            log!("Great :)");
-        }
-        Msg::Vote(i, v) => {
-            log!("Vote: ", i, v);
-            model.translations[i].votes += v;
-        }
-        Msg::Promote => {
-            model.placeholder.take().unwrap();
-            let text = model.placeholder_element.get().unwrap().value();
-
-            let mut sentence = Sentence::new(model.target, text);
-            sentence.votes += 1;
-
-            model.translations.push(sentence);
+fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
+    match model {
+        Model::Loading => match msg {
+            Msg::SentenceMsg(sentence) => {
+                let target = "en_US";
+                let sentence_model = 
+                    SentenceModel {
+                        source: sentence,
+                        target,
+                        translations: vec![
+                            Sentence::new("en_US", "Translation 1".to_string()),
+                            Sentence::new("en_US", "Translation 2".to_string()),
+                            Sentence::new("en_US", "Translation 3".to_string()),
+                            Sentence::new("ja", "Translation 4".to_string()),
+                            Sentence::new("ja", "Translation 5".to_string()),
+                        ],
+                        placeholder: Some("Traducao do google".to_string()),
+                        placeholder_element: ElRef::default(),
+                    };
+                *model = Model::Loaded(sentence_model);
+            }
+            _ => {}
+        },
+        Model::Loaded(sentence_model) => {
+            match msg {
+                // Msg::Target(lang) => {
+                //     model.target = lang;
+                // }
+                Msg::Again => {
+                    log!("Again :/");
+                }
+                Msg::Great => {
+                    log!("Great :)");
+                }
+                Msg::Vote(i, v) => {
+                    log!("Vote: ", i, v);
+                    sentence_model.translations[i].votes += v;
+                }
+                Msg::Promote => {
+                    sentence_model.placeholder.take().unwrap();
+                    let text = sentence_model.placeholder_element.get().unwrap().value();
+                    let mut sentence = Sentence::new(sentence_model.target, text);
+                    sentence.votes += 1;
+                    sentence_model.translations.push(sentence);
+                }
+                Msg::SentenceMsg(sentence) => {
+                    *model = Model::Loading;
+                    let sentence_message = Msg::SentenceMsg(sentence);
+                    orders.send_msg(sentence_message);
+                }
+            }
         }
     }
 }
@@ -103,7 +144,17 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
 // ------ ------
 
 // `view` describes what to display.
+
 fn view(model: &Model) -> Node<Msg> {
+    match model {
+        Model::Loading => {
+            p!["loading..."]
+        }
+        Model::Loaded(sentence) => view_sentence_model(sentence),
+    }
+}
+
+fn view_sentence_model(model: &SentenceModel) -> Node<Msg> {
     div![
         C![
             "min-h-screen",
