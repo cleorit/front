@@ -4,13 +4,20 @@
 #![allow(clippy::wildcard_imports)]
 
 use seed::{prelude::*, *};
+use serde::{Serialize, Deserialize};
+
 
 // ------ ------
 //     Init
 // ------ ------
 
 async fn fetch_sentence(id: usize) -> Msg {
-    Msg::SentenceMsg(Sentence::new("pt_BR", "O gato esta no cesto".to_string()))
+    let url = format!("http://127.0.0.1:3000/sentences/{}/target/{}", id, "en_US");
+    let response = fetch(url).await.expect("Fetched response");
+    // log!("got response text: ", response.text().await);
+    let sentence = response.json().await.expect("Decoded response");
+    Msg::SentenceMsg(sentence)
+    // Msg::SentenceMsg(Sentence::new("pt_BR", "O gato esta no cesto".to_string()))
 }
 
 // `init` describes what should happen when your app started.
@@ -38,18 +45,21 @@ fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
 //     Model
 // ------ ------
 
+#[derive(Serialize, Deserialize)]
 struct Sentence {
-    lang: &'static str,
+    lang: String,
     text: String,
     votes: i32,
+    translations: Vec<i32>,
 }
 
 impl Sentence {
     fn new(lang: &'static str, text: String) -> Self {
         Self {
-            lang,
+            lang: lang.to_owned(),
             text,
             votes: 0,
+            translations : Vec::new(),
         }
     }
 }
@@ -175,7 +185,7 @@ fn view_sentence_model(model: &SentenceModel) -> Node<Msg> {
                 div![
                     div![
                         C!["py-2"],
-                        span![C!["w-24"], model.source.lang, ":"],
+                        span![C!["w-24"], &model.source.lang, ":"],
                         span![C!["px-4"], &model.source.text]
                     ],
                     div![
